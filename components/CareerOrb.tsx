@@ -162,6 +162,7 @@ export default function CareerOrb({ skillCount, gapStatus, isGenerating, hasResu
                 count={particlesData.length / 3}
                 array={particlesData}
                 itemSize={3}
+                args={[particlesData, 3]}
               />
             </bufferGeometry>
             <pointsMaterial size={0.05} color="#10b981" transparent opacity={0.6} />
