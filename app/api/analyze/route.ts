@@ -5,16 +5,14 @@ export async function POST(req: NextRequest) {
   try {
     const { fileData, mimeType, dreamRole, schema, systemInstruction } = await req.json();
 
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Gemini API key not configured on server' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro", // Updated to a more stable production model
-    });
+    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const result = await model.generateContent({
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-pro",
       contents: [
         {
           role: 'user',
@@ -31,16 +29,18 @@ export async function POST(req: NextRequest) {
           ]
         }
       ],
-      generationConfig: {
+      config: {
         responseMimeType: "application/json",
         responseSchema: schema,
         temperature: 0.2,
+        systemInstruction,
       },
-      systemInstruction,
     });
 
-    const response = await result.response;
-    const text = response.text();
+    const text = result.text;
+    if (!text) {
+      throw new Error('Gemination failed to return text');
+    }
     
     return NextResponse.json(JSON.parse(text));
   } catch (error: any) {
