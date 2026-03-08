@@ -3,12 +3,11 @@
 import { useState, useRef, useMemo } from 'react';
 import { Upload, FileText, Loader2, CheckCircle, Briefcase, TrendingUp, Map, Award, BookOpen, Cpu, Target, AlertTriangle, AlertCircle, Download } from 'lucide-react';
 import { motion } from 'motion/react';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
+import { Type, Schema } from '@google/genai';
 import { Canvas } from '@react-three/fiber';
 import { Environment, OrbitControls } from '@react-three/drei';
 import CareerOrb from '@/components/CareerOrb';
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
 
 const responseSchema: Schema = {
   type: Type.OBJECT,
@@ -207,35 +206,26 @@ Use the following context as your sole source of truth for the 2026 job market:
    - Month 3: Certification & Application (link to specific MDEC or TalentCorp programs).
 7. Cross-reference their extracted skills with the context and the provided 'Dream Role' (if any) to generate a 'Gap Analysis' report showing: 1) Verified matches, 2) Partially matched skills, and 3) Missing critical skills for HGHV (High Growth High Value) sectors.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data
-              }
-            },
-            {
-              text: `Analyze this document according to the system instructions.\n\nUser's Dream Role: ${dreamRole || 'Not specified, assume a high-growth role based on their profile.'}`
-            }
-          ]
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        config: {
+        body: JSON.stringify({
+          fileData: base64Data,
+          mimeType,
+          dreamRole,
+          schema: responseSchema,
           systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema,
-          temperature: 0.2
-        }
+        }),
       });
 
-      const text = response.text;
-      if (!text) {
-        throw new Error("No response from Gemini");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze document');
       }
 
-      const parsedResult = JSON.parse(text);
+      const parsedResult = await response.json();
       setResult(parsedResult);
       if (parsedResult.roadmap && parsedResult.roadmap.length > 0) {
         setActiveMonth(parsedResult.roadmap[0].month);
